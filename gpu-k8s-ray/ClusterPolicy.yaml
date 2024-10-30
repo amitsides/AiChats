@@ -1,0 +1,17 @@
+apiVersion: nvidia.com/v1
+kind: ClusterPolicy
+metadata:
+  name: gpu-cluster-policy
+spec:
+  mig:
+    strategy: mixed
+    devices:
+      - name: all-1g.5gb
+        profiles:
+          - 1g.5gb
+          - 1g.5gb
+          - 1g.5gb
+          - 1g.5gb
+          - 1g.5gb
+          - 1g.5gb
+          - 1g.5gb
