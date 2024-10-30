@@ -1,0 +1,35 @@
+# secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-credentials
+  namespace: your-namespace
+type: Opaque
+data:
+  # Values must be base64 encoded
+  credentials: ENC[AES256]<your-base64-encoded-and-encrypted-credentials>
+---
+# pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-pod
+  namespace: your-namespace
+spec:
+  containers:
+  - name: app-container
+    image: your-app-image:tag
+    env:
+    - name: AWS_CREDENTIALS
+      valueFrom:
+        secretKeyRef:
+          name: aws-credentials
+          key: credentials
+    volumeMounts:
+    - name: aws-credentials-volume
+      mountPath: /var/run/secrets/aws
+      readOnly: true
+  volumes:
+  - name: aws-credentials-volume
+    secret:
+      secretName: aws-credentials
