@@ -1,0 +1,214 @@
+# 0. Namespace for better resource organization
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data-pipeline
+---
+# 1. Kafka Deployment with Secret Management
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-ingestion
+  namespace: data-pipeline
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kafka-ingestion
+  template:
+    metadata:
+      labels:
+        app: kafka-ingestion
+    spec:
+      containers:
+      - name: kafka-consumer
+        image: confluentinc/cp-kafka:latest
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: kafka-config
+              key: bootstrap-servers
+        - name: KAFKA_SASL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: kafka-credentials
+              key: username
+        - name: KAFKA_SASL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kafka-credentials
+              key: password
+---
+# 2. Flink Stream Processing Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flink-stream-processor
+  namespace: data-pipeline
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flink-processor
+  template:
+    metadata:
+      labels:
+        app: flink-processor
+    spec:
+      containers:
+      - name: flink-job
+        image: your-org/flink-stream-processor:v1.0
+        env:
+        - name: DELTA_LAKE_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: delta-lake-config
+              key: endpoint
+        - name: DELTA_LAKE_CREDENTIALS
+          valueFrom:
+            secretKeyRef:
+              name: delta-lake-secret
+              key: access-key
+---
+# 3. Spark Batch Processing Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: spark-batch-processor
+  namespace: data-pipeline
+spec:
+  template:
+    spec:
+      containers:
+      - name: spark-batch-job
+        image: your-org/spark-batch-processor:v1.0
+        env:
+        - name: DELTA_LAKE_TABLE
+          valueFrom:
+            configMapKeyRef:
+              name: delta-lake-config
+              key: table-name
+---
+# 4. AWS Glue ETL Sidecar (Simulated in Kubernetes)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: glue-etl-sidecar
+  namespace: data-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: glue-etl
+  template:
+    metadata:
+      labels:
+        app: glue-etl
+    spec:
+      containers:
+      - name: glue-etl-container
+        image: your-org/glue-etl-emulator:v1.0
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-glue-credentials
+              key: access-key
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-glue-credentials
+              key: secret-key
+---
+# 5. Athena Query Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: athena-query-service
+  namespace: data-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: athena-query
+  template:
+    metadata:
+      labels:
+        app: athena-query
+    spec:
+      containers:
+      - name: athena-service
+        image: your-org/athena-query-service:v1.0
+        env:
+        - name: ATHENA_S3_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: athena-config
+              key: results-bucket
+---
+# 6. Machine Learning Model Training Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ml-model-training
+  namespace: data-pipeline
+spec:
+  template:
+    spec:
+      containers:
+      - name: ml-training
+        image: your-org/spark-ml-trainer:v1.0
+        env:
+        - name: SAGEMAKER_ROLE_ARN
+          valueFrom:
+            secretKeyRef:
+              name: sagemaker-credentials
+              key: role-arn
+---
+# 7. Real-time Prediction Microservice
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prediction-microservice
+  namespace: data-pipeline
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: prediction-service
+  template:
+    metadata:
+      labels:
+        app: prediction-service
+    spec:
+      containers:
+      - name: prediction-container
+        image: your-org/ml-prediction-service:v1.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MODEL_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: ml-model-config
+              key: endpoint
+---
+# Secrets and ConfigMaps
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kafka-credentials
+  namespace: data-pipeline
+type: Opaque
+stringData:
+  username: your-kafka-username
+  password: your-kafka-password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-config
+  namespace: data-pipeline
+data:
+  bootstrap-servers: kafka-cluster.example.com:9092
